@@ -1,0 +1,14 @@
+# Xcode
+## Build generated
+build/
+DerivedData/
+
+## XCode project files
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# Swift
+.swiftpm/
+
+# macOS
+.DS_Store
