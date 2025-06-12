@@ -1,0 +1,153 @@
+name: Xcode - Build and Analyze AtmosRecorder
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-and-analyze:
+    name: Build and Analyze AtmosRecorder
+    # 使用较新的 macos-15 运行环境
+    runs-on: macos-15
+
+    # 将所有多行脚本定义为环境变量，这是最稳健、最能避免YAML语法错误的做法
+    env:
+      PORTABLE_SCRIPT: |
+        #!/bin/bash
+        # AtmosRecorder - Portable Unix Launcher
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        EXECUTABLE="$SCRIPT_DIR/AtmosRecorder"
+        if [ ! -f "$EXECUTABLE" ]; then
+            echo "错误: 找不到可执行文件 $EXECUTABLE" >&2
+            exit 1
+        fi
+        if [ ! -x "$EXECUTABLE" ]; then
+            chmod +x "$EXECUTABLE"
+        fi
+        # 执行目标程序，并传递所有参数
+        exec "$EXECUTABLE" "$@"
+
+      README_CONTENT: |
+        AtmosRecorder - Unix 可执行文件
+
+        文件说明:
+        - AtmosRecorder: macOS 原生可执行文件
+        - AtmosRecorder-portable: 便携式启动脚本
+
+        使用方法:
+        1. 直接运行 (macOS): ./AtmosRecorder [参数]
+        2. 使用便携式脚本: ./AtmosRecorder-portable [参数]
+
+        注意事项:
+        - 此可执行文件为 macOS 构建。
+        - 如遇权限问题，请运行: chmod +x AtmosRecorder AtmosRecorder-portable
+
+        构建信息:
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select default Xcode and show info
+        run: |
+          echo "--- Available Xcode installations ---"
+          ls /Applications/ | grep Xcode
+          echo "--- Setting default Xcode path ---"
+          # 使用虚拟机上最标准的路径，健壮性最高
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          echo "--- Selected Xcode version ---"
+          xcodebuild -version
+
+      - name: Build project
+        run: |
+          # 使用最强力的参数组合来覆盖代码签名设置
+          xcodebuild build -scheme "AtmosRecorder" -project "AtmosRecorder.xcodeproj" \
+            -destination 'generic/platform=macOS' \
+            -configuration Release \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            MACOSX_DEPLOYMENT_TARGET=12.0
+
+      # 如果此步骤依然因为签名失败，最终解决方案是在您本地 Xcode 项目的 Build Settings 里，
+      # 将 Code Signing Identity 设置为 "Don't Code Sign"，然后提交更改。
+      - name: Analyze project
+        run: |
+          xcodebuild analyze -scheme "AtmosRecorder" -project "AtmosRecorder.xcodeproj" \
+            -destination 'generic/platform=macOS' \
+            -configuration Release \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            MACOSX_DEPLOYMENT_TARGET=12.0
+
+      - name: Find and prepare executable
+        id: find_exec
+        run: |
+          echo "--- 查找构建产物 ---"
+          # 使用 BUILT_PRODUCTS_DIR 直接获取 Release 配置下的产物目录，最为精确
+          PRODUCTS_DIR=$(xcodebuild -scheme "AtmosRecorder" -project "AtmosRecorder.xcodeproj" -showBuildSettings -configuration Release | grep -m 1 "BUILT_PRODUCTS_DIR" | awk '{print $3}')
+          EXECUTABLE_PATH="$PRODUCTS_DIR/AtmosRecorder"
+          
+          echo "预期的可执行文件路径: $EXECUTABLE_PATH"
+          
+          if [ ! -f "$EXECUTABLE_PATH" ]; then
+            echo "错误: 未在预期的路径找到可执行文件！" >&2
+            echo "--- 将会列出产物目录的实际内容以供调试 ---"
+            ls -lR "$PRODUCTS_DIR"
+            exit 1
+          fi
+          
+          echo "成功找到可执行文件: $EXECUTABLE_PATH"
+          mkdir -p ./build-output
+          cp "$EXECUTABLE_PATH" ./build-output/AtmosRecorder
+          chmod +x ./build-output/AtmosRecorder
+          
+          echo "output_path=./build-output" >> "$GITHUB_OUTPUT"
+          
+          echo "--- 可执行文件信息 ---"
+          file ./build-output/AtmosRecorder
+          lipo -info ./build-output/AtmosRecorder
+
+      - name: Create portable wrapper and README
+        if: steps.find_exec.outputs.output_path
+        run: |
+          echo "$PORTABLE_SCRIPT" > ./build-output/AtmosRecorder-portable
+          chmod +x ./build-output/AtmosRecorder-portable
+
+          echo "$README_CONTENT" > ./build-output/README.txt
+          echo "- 构建系统: $(sw_vers -productName) $(sw_vers -productVersion)" >> ./build-output/README.txt
+          echo "- 构建日期: $(date)" >> ./build-output/README.txt
+          echo "- Xcode版本: $(xcodebuild -version | head -1)" >> ./build-output/README.txt
+          
+          echo "--- 已创建的打包文件 ---"
+          ls -la ./build-output/
+
+      - name: Upload Build Artifacts
+        if: steps.find_exec.outputs.output_path
+        uses: actions/upload-artifact@v4
+        with:
+          name: unix-executable-AtmosRecorder
+          path: ./build-output/
+          retention-days: 30
+
+      - name: Create and Upload Release Package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.find_exec.outputs.output_path
+        run: |
+          cd ./build-output
+          tar -czf "../AtmosRecorder-unix.tar.gz" *
+          cd ..
+          shasum -a 256 AtmosRecorder-unix.tar.gz > AtmosRecorder-unix.tar.gz.sha256
+      
+      - name: Upload Release Artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.find_exec.outputs.output_path
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: |
+            AtmosRecorder-unix.tar.gz
+            AtmosRecorder-unix.tar.gz.sha256
+          retention-days: 90
