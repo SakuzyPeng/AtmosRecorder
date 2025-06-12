@@ -36,8 +36,8 @@ jobs:
         - AtmosRecorder-portable: 便携式启动脚本
 
         使用方法:
-        1. 直接运行 (macOS): ./AtmosRecorder [参数]
-        2. 使用便携式脚本: ./AtmosRecorder-portable [参数]
+        1. 直接运行 (macOS): ./AtmosRecorder
+        2. 使用便携式脚本: ./AtmosRecorder-portable
 
         注意事项:
         - 此可执行文件为 macOS 构建。
