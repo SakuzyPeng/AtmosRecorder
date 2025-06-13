@@ -9,8 +9,8 @@
 /* Begin PBXBuildFile section */
 		913965682DD7989A002DDEC2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 913965672DD7989A002DDEC2 /* Foundation.framework */; };
 		9139656A2DD79B0B002DDEC2 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 913965692DD79B0B002DDEC2 /* CoreMedia.framework */; };
-		913F7D352DD7053700A2D616 /* ScreenCaptureKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 913F7D342DD7053700A2D616 /* ScreenCaptureKit.framework */; };
-		91D7BE4B2DD5D00A00947A78 /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91D7BE4A2DD5D00A00947A78 /* AVKit.framework */; };
+		91C298962DFBF1ED008B4528 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91C298952DFBF1ED008B4528 /* AppKit.framework */; };
+		91C298992DFBF38A008B4528 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91C298972DFBF1F6008B4528 /* Accelerate.framework */; };
 		91FCA0872DD5745B00AFC664 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91FCA0862DD5745B00AFC664 /* AudioToolbox.framework */; };
 		91FCA0892DD5746200AFC664 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91FCA0882DD5746200AFC664 /* AVFoundation.framework */; };
 		91FCA0902DD57D6600AFC664 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91FCA08F2DD57D6600AFC664 /* AVFAudio.framework */; };
@@ -32,6 +32,8 @@
 		913965672DD7989A002DDEC2 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		913965692DD79B0B002DDEC2 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		913F7D342DD7053700A2D616 /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
+		91C298952DFBF1ED008B4528 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		91C298972DFBF1F6008B4528 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		91D7BE4A2DD5D00A00947A78 /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
 		91FCA07B2DD5744A00AFC664 /* AtmosRecorder */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = AtmosRecorder; sourceTree = BUILT_PRODUCTS_DIR; };
 		91FCA0862DD5745B00AFC664 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
@@ -53,10 +55,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				91FCA0902DD57D6600AFC664 /* AVFAudio.framework in Frameworks */,
+				91C298992DFBF38A008B4528 /* Accelerate.framework in Frameworks */,
 				913965682DD7989A002DDEC2 /* Foundation.framework in Frameworks */,
 				91FCA0892DD5746200AFC664 /* AVFoundation.framework in Frameworks */,
-				91D7BE4B2DD5D00A00947A78 /* AVKit.framework in Frameworks */,
-				913F7D352DD7053700A2D616 /* ScreenCaptureKit.framework in Frameworks */,
+				91C298962DFBF1ED008B4528 /* AppKit.framework in Frameworks */,
 				91FCA0872DD5745B00AFC664 /* AudioToolbox.framework in Frameworks */,
 				9139656A2DD79B0B002DDEC2 /* CoreMedia.framework in Frameworks */,
 			);
@@ -85,6 +87,8 @@
 		91FCA0852DD5745B00AFC664 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				91C298972DFBF1F6008B4528 /* Accelerate.framework */,
+				91C298952DFBF1ED008B4528 /* AppKit.framework */,
 				913965692DD79B0B002DDEC2 /* CoreMedia.framework */,
 				913965672DD7989A002DDEC2 /* Foundation.framework */,
 				913F7D342DD7053700A2D616 /* ScreenCaptureKit.framework */,
@@ -294,6 +298,10 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = T2Z7VV7AX4;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ACCELERATE_NEW_LAPACK=1",
+					"ACCELERATE_LAPACK_ILP64=1",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
@@ -309,6 +317,10 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = T2Z7VV7AX4;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ACCELERATE_NEW_LAPACK=1",
+					"ACCELERATE_LAPACK_ILP64=1",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};

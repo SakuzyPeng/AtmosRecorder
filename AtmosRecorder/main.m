@@ -214,7 +214,7 @@ BOOL processFile(NSString *inputPath) {
         return NO;
     }
     
-    playerItem.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmVarispeed;
+//    playerItem.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmVarispeed;
     
     // --- 配置 TAP 输出格式为: 12 声道, Atmos 7.1.4 ---
     double sampleRate = 48000.0;
@@ -288,6 +288,7 @@ BOOL processFile(NSString *inputPath) {
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        [NSThread setThreadPriority:1.0];
         printf("Atmos音频提取工具 v1.0\n");
         printf("========================================\n");
         

@@ -1,4 +1,5 @@
 #import "TapManager.h"
+#import <Accelerate/Accelerate.h>
 
 // 定义日志宏
 #ifdef DEBUG
@@ -55,7 +56,6 @@ static void tap_Finalize(MTAudioProcessingTapRef tap) {
     DebugLog(@"[MTAudioProcessingTap] Finalize.");
     struct TapClientData *tapData = (struct TapClientData *)MTAudioProcessingTapGetStorage(tap);
     if (tapData) {
-        // 清理非交错缓冲区
         if (tapData->nonInterleavedABL) {
             DebugLog(@"[MTAudioProcessingTap] Finalize: Freeing nonInterleavedABL.");
             for (UInt32 i = 0; i < tapData->nonInterleavedABL->mNumberBuffers; ++i) {
@@ -67,7 +67,6 @@ static void tap_Finalize(MTAudioProcessingTapRef tap) {
             tapData->nonInterleavedABL = NULL;
         }
         
-        // 清理重用缓冲区
         tapData->reusableOutputBuffer = nil;
         tapData->maxFrameCapacity = 0;
     }
@@ -78,16 +77,10 @@ static void tap_Prepare(MTAudioProcessingTapRef tap, CMItemCount maxFrames, cons
           (long)maxFrames, asbd->mSampleRate, (unsigned int)asbd->mChannelsPerFrame, (unsigned int)asbd->mFormatID, (unsigned int)asbd->mFormatFlags);
 
     struct TapClientData *tapData = (struct TapClientData *)MTAudioProcessingTapGetStorage(tap);
-    if (!tapData) {
-        ErrorLog("tap_Init: tapData 为 NULL");
-        return;
-    }
+    if (!tapData) { return; }
     
     TapManager * __strong strongManager = tapData->manager;
-    if (!strongManager) {
-        ErrorLog("tap_Prepare: manager 为 NULL");
-        return;
-    }
+    if (!strongManager) { return; }
 
     tapData->tapInputASBD = *asbd;
     tapData->tapInputASBDIsValid = YES;
@@ -95,12 +88,10 @@ static void tap_Prepare(MTAudioProcessingTapRef tap, CMItemCount maxFrames, cons
     strongManager.tapInputDerivedFormat = [[AVAudioFormat alloc] initWithStreamDescription:asbd];
     tapData->processingFormatFromTapASBD = strongManager.tapInputDerivedFormat;
 
-    // 预分配重用缓冲区
     if (tapData->outputFileFormatToMatch) {
         tapData->reusableOutputBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:tapData->outputFileFormatToMatch
                                                                        frameCapacity:(AVAudioFrameCount)maxFrames];
         tapData->maxFrameCapacity = (AVAudioFrameCount)maxFrames;
-        DebugLog(@"[MTAudioProcessingTap] Prepare: Allocated reusable buffer with capacity: %u frames", tapData->maxFrameCapacity);
     }
 
     BOOL tapIsInterleaved = (asbd->mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0;
@@ -126,9 +117,6 @@ static void tap_Prepare(MTAudioProcessingTapRef tap, CMItemCount maxFrames, cons
                             break;
                         }
                     }
-                    if (allocationSuccess) {
-                        DebugLog(@"[MTAudioProcessingTap] Prepare: nonInterleavedABL (%u ch) ready for de-interleaving.", numInputChannels);
-                    }
                 }
             }
         }
@@ -148,10 +136,8 @@ static void tap_Unprepare(MTAudioProcessingTapRef tap) {
             }
             free(tapData->nonInterleavedABL);
             tapData->nonInterleavedABL = NULL;
-            DebugLog(@"[MTAudioProcessingTap] Unprepare: Freed nonInterleavedABL.");
         }
         
-        // 清理重用缓冲区
         tapData->reusableOutputBuffer = nil;
         tapData->maxFrameCapacity = 0;
     }
@@ -161,21 +147,10 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
     @autoreleasepool {
         struct TapClientData *tapData = (struct TapClientData *)MTAudioProcessingTapGetStorage(tap);
 
-        if (!tapData) {
-            MTAudioProcessingTapGetSourceAudio(tap,numberFrames,bufferListInOut,flagsOut,NULL,numberFramesOut);
-            *numberFramesOut=0;
-            return;
-        }
-        
+        if (!tapData) { MTAudioProcessingTapGetSourceAudio(tap,numberFrames,bufferListInOut,flagsOut,NULL,numberFramesOut); *numberFramesOut=0; return; }
         TapManager * __strong strongManager = tapData->manager;
-        if (!strongManager) {
-            MTAudioProcessingTapGetSourceAudio(tap,numberFrames,bufferListInOut,flagsOut,NULL,numberFramesOut);
-            *numberFramesOut=0;
-            return;
-        }
-
+        if (!strongManager) { MTAudioProcessingTapGetSourceAudio(tap,numberFrames,bufferListInOut,flagsOut,NULL,numberFramesOut); *numberFramesOut=0; return; }
         AVAudioFile * __strong fileToWrite = strongManager.currentOutputFile;
-
         if (!tapData->isRecording || !fileToWrite || !tapData->outputFileFormatToMatch || !tapData->tapInputASBDIsValid) {
             OSStatus status = MTAudioProcessingTapGetSourceAudio(tap, numberFrames, bufferListInOut, flagsOut, NULL, numberFramesOut);
             if (status != noErr) *numberFramesOut = 0;
@@ -183,18 +158,14 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         }
 
         OSStatus sourceAudioStatus = MTAudioProcessingTapGetSourceAudio(tap, numberFrames, bufferListInOut, flagsOut, NULL, numberFramesOut);
-        if (sourceAudioStatus != noErr || *numberFramesOut == 0) {
-            return;
-        }
+        if (sourceAudioStatus != noErr || *numberFramesOut == 0) { return; }
         
-        // 使用重用缓冲区或创建新的
         AVAudioPCMBuffer *outputBuffer;
         if (tapData->reusableOutputBuffer && tapData->maxFrameCapacity >= *numberFramesOut) {
             outputBuffer = tapData->reusableOutputBuffer;
             outputBuffer.frameLength = (AVAudioFrameCount)*numberFramesOut;
         } else {
-            outputBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:tapData->outputFileFormatToMatch
-                                                           frameCapacity:(AVAudioFrameCount)*numberFramesOut];
+            outputBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:tapData->outputFileFormatToMatch frameCapacity:(AVAudioFrameCount)*numberFramesOut];
             outputBuffer.frameLength = (AVAudioFrameCount)*numberFramesOut;
         }
 
@@ -205,18 +176,20 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         AudioBufferList *sourceABL;
 
         if (inputIsInterleaved) {
-            if (bufferListInOut->mNumberBuffers != 1 || !tapData->nonInterleavedABL || tapData->nonInterleavedABL->mNumberBuffers != inputNumChannelsFromTap) {
-                return;
+            if (bufferListInOut->mNumberBuffers != 1 || !tapData->nonInterleavedABL || tapData->nonInterleavedABL->mNumberBuffers != inputNumChannelsFromTap) { return; }
+            
+            const float *inputSamples = (const float *)bufferListInOut->mBuffers[0].mData;
+            
+            for (UInt32 ch = 0; ch < inputNumChannelsFromTap; ++ch) {
+                float *outputChannel = (float *)tapData->nonInterleavedABL->mBuffers[ch].mData;
+                
+                cblas_scopy((int)*numberFramesOut,      // n: 元素数量
+                            inputSamples + ch,          // x: 源向量
+                            (int)inputNumChannelsFromTap, // incx: 源步长
+                            outputChannel,              // y: 目标向量
+                            1);                         // incy: 目标步长
             }
-            UInt32 bytesPerSamplePerChannel = (inputNumChannelsFromTap > 0) ? (tapData->tapInputASBD.mBytesPerFrame / inputNumChannelsFromTap) : 0;
-            if(bytesPerSamplePerChannel == 0) return;
-
-            float *inputSamples = (float *)bufferListInOut->mBuffers[0].mData;
-            for (AVAudioFrameCount frame = 0; frame < *numberFramesOut; ++frame) {
-                for (UInt32 ch = 0; ch < inputNumChannelsFromTap; ++ch) {
-                    ((float *)tapData->nonInterleavedABL->mBuffers[ch].mData)[frame] = inputSamples[frame * inputNumChannelsFromTap + ch];
-                }
-            }
+            
             sourceABL = tapData->nonInterleavedABL;
         } else {
             if (bufferListInOut->mNumberBuffers != inputNumChannelsFromTap) return;
@@ -240,7 +213,6 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
     }
 }
 
-
 // --- TapManager Objective-C Implementation ---
 @implementation TapManager {
     struct TapClientData _clientData;
@@ -261,7 +233,6 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         self.outputFileURL_ivar = outputFileURL;
         _isRecording = NO;
 
-        // 初始化客户端数据结构
         _clientData.manager = self;
         _clientData.isRecording = NO;
         _clientData.outputFileFormatToMatch = self.fixedOutputFormat;
@@ -336,13 +307,10 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
     _clientData.outputFile = self.currentOutputFile;
     InfoLog("输出文件准备就绪: %s", self.outputFileURL_ivar.lastPathComponent.UTF8String);
 
-    // 设置进度监控
     [self setupProgressMonitoring];
 
-    // Asynchronously load audio tracks
     __weak typeof(self) weakSelf = self;
     [self.playerItem_ivar.asset loadTracksWithMediaType:AVMediaTypeAudio completionHandler:^(NSArray<AVAssetTrack *> * _Nullable audioTracks, NSError * _Nullable error) {
-        // Dispatch to main thread to modify player and playerItem
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) { return; }
@@ -384,7 +352,6 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
             
             InfoLog("开始转换...");
             
-            // 设置播放器静音
             strongSelf.player.volume = 0.0f;
             strongSelf.player.rate = 1.0f;
         });
@@ -400,7 +367,7 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
     }
     
     __weak typeof(self) weakSelf = self;
-    self.timeObserver = [self.player addPeriodicTimeObserverForInterval:CMTimeMake(1, 2) // 每0.5秒更新一次
+    self.timeObserver = [self.player addPeriodicTimeObserverForInterval:CMTimeMake(1, 2)
                                                                   queue:dispatch_get_main_queue()
                                                              usingBlock:^(CMTime time) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -409,12 +376,10 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         Float64 currentSeconds = CMTimeGetSeconds(time);
         float progress = currentSeconds / totalSeconds;
         
-        // 计算预计剩余时间
         NSTimeInterval remaining = totalSeconds - currentSeconds;
         
         printf("\r处理进度: %.1f%% [", progress * 100);
         
-        // 进度条
         int barWidth = 30;
         int pos = barWidth * progress;
         for (int i = 0; i < barWidth; ++i) {
@@ -426,7 +391,6 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         printf("] 剩余时间: %.0f秒", remaining);
         fflush(stdout);
         
-        // 调用进度回调
         if (strongSelf.progressHandler) {
             strongSelf.progressHandler(progress, currentSeconds, totalSeconds);
         }
@@ -449,7 +413,6 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
 
     DebugLog(@"Finalizing recording (Reason: %@). Error: %@", reason, potentialError.localizedDescription);
 
-    // 移除进度监控
     if (self.timeObserver) {
         [self.player removeTimeObserver:self.timeObserver];
         self.timeObserver = nil;
@@ -477,13 +440,11 @@ static void tap_Process(MTAudioProcessingTapRef tap, CMItemCount numberFrames, M
         DebugLog(@"Output file closed.");
     }
     
-    // 清理客户端数据
     _clientData.reusableOutputBuffer = nil;
     _clientData.maxFrameCapacity = 0;
     
     self.tapInputDerivedFormat = nil;
 
-    // 清除进度显示
     if (!potentialError) {
         printf("\r处理进度: 100.0%% [==============================] 完成!        \n");
     } else {
