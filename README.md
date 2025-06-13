@@ -6,7 +6,7 @@
 >
 > - **AI**(网页端):
 >   - 主要编写：Claude 4 Opus (Anthropic)
->   - 辅助优化：Gemini 2.5 Pro (Google)
+>   - 辅助优化：Gemini 2.5 Pro Preview (Google)
 >   - 气氛组：ChatGPT o4-mini-high (OpenAI)
 > - **IDE**：Xcode 16.4
 > - **系统**：macOS 15.5
