@@ -92,8 +92,6 @@
 
 **自动查找模式**
 
-Bash
-
 ```
 ./AtmosRecorder
 ```
@@ -101,8 +99,6 @@ Bash
 程序会在当前目录中查找第一个支持的音频文件并处理。
 
 **指定文件**
-
-Bash
 
 ```
 ./AtmosRecorder /path/to/audio.m4a
