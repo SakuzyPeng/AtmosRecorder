@@ -6,6 +6,9 @@ NS_ASSUME_NONNULL_BEGIN
 // 定义录制完成后的回调 Block 类型
 typedef void (^TapRecordingCompletionHandler)(NSError * _Nullable error);
 
+// 定义进度回调 Block 类型
+typedef void (^TapRecordingProgressHandler)(float progress, NSTimeInterval currentTime, NSTimeInterval totalTime);
+
 /**
  * TapManager 类负责使用 MTAudioProcessingTap 从 AVPlayerItem 中提取音频数据，
  * 并将其写入到一个具有指定多声道格式的文件中。
@@ -17,6 +20,9 @@ typedef void (^TapRecordingCompletionHandler)(NSError * _Nullable error);
 
 /// 指示当前是否正在录制。
 @property (nonatomic, assign, readonly) BOOL isRecording;
+
+/// 进度回调
+@property (nonatomic, copy, nullable) TapRecordingProgressHandler progressHandler;
 
 /**
  * 初始化 TapManager。
